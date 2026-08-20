@@ -400,3 +400,19 @@ Antes de declarar uma task pronta:
     envelhece de novo; um `rode isto para saber` não envelhece nunca
 
 Um staff engineer aprovaria? Se não, itera.
+
+---
+
+## Agent skills
+
+### Issue tracker
+
+Issues live on GitHub Issues for `pixarusemperor/wadeskhybrid`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default triage vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
