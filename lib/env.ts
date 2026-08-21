@@ -64,10 +64,15 @@ const schema = z.object({
   // instaláveis (import/install) usam `pg` cru (mesmo pool do agent-engine).
   SUPABASE_DB_URL: required("SUPABASE_DB_URL"),
 
-  // WAHA
-  WAHA_API_BASE_URL: required("WAHA_API_BASE_URL"),
-  WAHA_API_KEY: required("WAHA_API_KEY"),
-  WAHA_WEBHOOK_BASE_URL: required("WAHA_WEBHOOK_BASE_URL"),
+  // WAHA — opcional desde a fusão Wasender (PROJECT DIRECTION.md: "não usar
+  // WAHA"). Todos os consumidores já degradam sem elas: getWahaClient()
+  // devolve null, o /health reporta degraded/not_configured e o watchdog do
+  // worker nem liga. required() aqui derrubava 100% das requisições com 500
+  // (safeParse lança no primeiro request; healthcheck TCP mantinha o contêiner
+  // "healthy") — foi exatamente assim que wassflow.orizongroup.online morreu.
+  WAHA_API_BASE_URL: z.string().optional().default(""),
+  WAHA_API_KEY: z.string().optional().default(""),
+  WAHA_WEBHOOK_BASE_URL: z.string().optional().default(""),
   // Segredo com que o WAHA assina os webhooks. O compose já o entrega ao
   // contêiner do WAHA; o app precisa dele para CONFERIR a assinatura — e não o
   // declarava aqui, então nunca teve como verificar nada.
@@ -79,9 +84,11 @@ const schema = z.object({
   // assine — aí a verificação passa a ser obrigatória.
   WAHA_WEBHOOK_REQUIRE_SIGNATURE: z.string().optional().default("false"),
 
-  // Upstash Redis
-  UPSTASH_REDIS_REST_URL: required("UPSTASH_REDIS_REST_URL"),
-  UPSTASH_REDIS_REST_TOKEN: required("UPSTASH_REDIS_REST_TOKEN"),
+  // Upstash Redis — opcional: rate-limit (lib/ai/dispatcher/rate-limit.ts) e
+  // debounce do RAG têm fallback em memória com warn explícito; /health reporta
+  // degraded. Mesma lição das vars WAHA acima.
+  UPSTASH_REDIS_REST_URL: z.string().optional().default(""),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional().default(""),
 
   // AI providers — env-gated. Worker no-ops with skip="ai_gateway_key_missing"
   // when AI_GATEWAY_API_KEY is absent, so production boot must not be fatal.
