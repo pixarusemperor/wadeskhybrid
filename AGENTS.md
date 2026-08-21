@@ -243,6 +243,71 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
+## Restrições do PROJECT DIRECTION.md
+
+[`PROJECT DIRECTION.md`](PROJECT%20DIRECTION.md) define restrições **não-negociáveis** para esta implementação. Antes de tocar em código, consulte-o integralmente.
+
+### Proibido
+
+- **Rebuild de foundations desnecessário** — preserve o que já funciona. Cada modificação deve responder: por que não pode ser implementado ao lado?
+- **Requerer AI API key para V1** — AI é opcional. Não remova código AI existente. Não faça workflow execution depender de AI. Não hardcode outro provider.
+- **Confundir PAT e Session API Key** — PAT é account-level (server-side only); Session Key é session-scoped. Nunca exponha nenhuma no browser (`NEXT_PUBLIC_*`), nunca logue, nunca commite.
+- **Duplicar sistema de idempotency** — reutilize a infraestrutura existente. Evento duplicado = 1 processamento, 0 mensagens duplicadas de saída.
+- **Executar workflow longo no webhook** — verify signature → ack → persist → queue. Never synchronous.
+- **Introduzir novo database** — use Supabase. Cloudflare R2 proibido em V1 a menos que audit proving Supabase Storage não suporta.
+- **Copiar outro CRM** — apenas componentes UI do WA CRM builder (MIT), adaptados. Nunca Meta/WhatsApp-specific code do WA CRM.
+- **Pular phase gates** — STOP on failure. Nunca proceed enquanto a fase atual falha. Checkpoint = implemented + tested + verified.
+- **Fazer testes dependerem de delays reais** — use fake clocks / time injection.
+- **Bypassar o CRM para produção** — agentes externos não chamam Wasender `send-message` diretamente para campaign execution. Todo envio passa pelo CRM.
+- **Flat o Git history do upstream** — preserve `upstream` remote. `git fetch upstream` deve funcionar. Nunca rebuild from scratch.
+- **Editar migration upstream aplicada** — crie migration nova. Custom migrations usam numbering separado.
+- **Fazer Wasender MCP uma dependency** — investigue antes de adotar.
+- **Claimar "anti-ban guarantees"** — nunca. Teste por controle, não por promessa.
+- **Docker destructive commands** em recursos não relacionados — nunca `docker system prune`, `docker volume prune`, `docker compose down` em recursos alheios. Nunca apague volumes sem confirmação.
+- **Usar WAHA como transporte WhatsApp** — o projeto substitui WAHA por WasenderAPI (§5, §52.4). Não basta renomear env vars; exige compatibility analysis completa (matriz WAHA→Wasender).
+- **Assumir comportamento do Wasender a partir do WAHA** — nunca. Documentação Wasender é autoritativa (§51.9). Inspecione autenticação, PAT, session key, sessões, QR, webhooks, incoming/outgoing, mídia, delivery, errors, rate limits, retries, session isolation antes de implementar.
+- **Fazer deploy editando arquivos à mão na VPS** — deploy via Coolify a partir de GitHub (§46, §52.20, §53.20). Commit → push → PR → merge na `main` → CI publica imagem → VPS puxa. Nunca `build:`-only em prod, nunca editar `.env`/compose à mão para bump de versão.
+- **Assumption de servidor fresco no deploy** — inspecione Docker/Coolify existente primeiro (§45, §52.21). Nunca toque recursos não relacionados. Preserve `upstream` remote.
+- **Confundir três tipos de AI** — Deskcomm runtime AI ≠ external coding agent (Claude Code/OpenCode) ≠ future CRM AI (§52.1). Nenhuma dependência sobre a outra.
+- **Falhas silenciosas** — workflows que não executam devem persistir estado `FAILED` com informações completas (§51.34).
+
+### Obrigatório
+
+- **Layer architecture (4 camadas não confundíveis):** CRM → Experiment Engine → Workflow Engine → Canonical WhatsApp Interface → Wasender Adapter → Wasender API
+- **Arquitetura de sessão:** múltiplas sessões WhatsApp suportadas. Cada workflow execution sabe sua session. Session A nunca envia por Session B.
+- **Canonical event model:** normalize eventos do Wasender antes do workflow engine. Payloads específicos do provedor não vazam para o CRM.
+- **Single conversation:** human + automated messages compartilham uma história cronológica. Não crie "automation conversation" separada.
+- **Time mockável:** produção usa random; testes usam deterministic seed.
+- **Follow-up content separado da workflow logic:** template de mensagem ≠ media asset ≠ workflow step.
+- **API programática é first-class:** workflow creation via API produce o mesmo representation do visual builder.
+- **`docs/UPSTREAM-MODIFICATIONS.md`:** registre cada arquivo upstream modificado (File, Upstream responsibility, Why modified, Our modification, Dependency on custom functionality, How difficult to rebase, Possible future extraction).
+- **Final app in English:** o produto final deve ser em inglês, não português. O upstream DeskcommCRM usa pt-BR como padrão com suporte parcial a `es` (`IDIOMAS = ["pt-BR", "es"]` em `lib/i18n/idiomas.ts`); `en` não está no array e nunca teve tradução. O custom layer deve: (1) adicionar `en` ao array `IDIOMAS`, (2) garantir tradução completa para inglês de todas as UI strings (a chave do dicionário é pt-BR, então `en` deve cobrir todas as 1.239+ entradas), (3) considerar `en` como idioma padrão para novos tenants, (4) manter `CLAUDE.md`/`AGENTS.md` em inglês, (5) usar inglês para variáveis/funções/comentários em código novo.
+- **Version matrix:** Deskcomm version + Custom version + Wasender adapter + DB schema + Status.
+- **Rebase test é release gate:** prove que o custom layer reaplica sobre novo upstream sem rebuild.
+- **Test layers (todas obrigatórias):** Unit → Property-based → Integration → Fake Wasender → State-machine → Database → Concurrency/idempotency → UI E2E → Real Wasender → Real WhatsApp.
+- **Two-number real WhatsApp test:** apenas após todos os testes simulados passarem. 2 números controlados.
+- **Database integrity testing:** inspecione estado persistido, não apenas UI assertions.
+- **Multi-tenant security testing:** Tenant A nunca vê dados de Tenant B. Add isolation tests.
+- **Auditar repositório completo antes de codificar** — inspecione source code (não só README). Mapeie: WAHA integration, Supabase schema + RLS, event_log + workers, CRM/inbox/pipelines, automação existente, testes, Docker, env vars (§2, §51.6).
+- **Contract-first Wasender** — crie interface explícita (`WhatsAppProvider` com `sendText/sendImage/sendAudio/sendVideo/sendDocument/getSessionStatus/handleWebhook/normalizeEvent`) antes de implementar (§51.8, §10).
+- **Kill switches** — global automation pause, per-variant PAUSED, per-session automation pause. Cada um previne novos envios sem deletar dados históricos (§51.37-51.39).
+- **Observabilidade** — logs estruturados, correlation IDs, workflow execution traceable de customer → message → event → variant → workflow → node → provider request/response (§51.33).
+- **Domínio público** — necessário para webhook URLs (WasenderAPI calls back), app URLs, sessão WhatsApp. Sem domínio público HTTPS, webhooks não funcionam.
+- **Checkpoint de Git** — após cada fase: implement + test + verify (§51.4). Ex: `v1.0-baseline`, `v1.1-wasender-adapter`, `v1.2-webhooks`, etc.
+- **Golden baseline** — antes de modificar: deploy original + testes + walkthrough UI + config Docker/Coolify (§51.5). Regression-test contra isso após cada fase.
+- **Análise de impacto** — antes de modificar componente upstream, gere: Current responsibility / Why required / Files affected / Database affected / API affected / Potential regression / How tested / Rollback (§51.3).
+
+### Phase gates (obrigatório)
+
+```
+ANALYZE → MINIMAL IMPLEMENTATION → UNIT TEST → INTEGRATION TEST → E2E TEST
+  → UI QA → REGRESSION → DOCUMENT → DEPLOY → OBSERVE → ONLY THEN ADD COMPLEXITY
+```
+
+V1 → V2 → V3 são progressivos. Nunca build V1+V2+V3 simultaneamente.
+
+---
+
 ## Agent skills
 
 ### Issue tracker
