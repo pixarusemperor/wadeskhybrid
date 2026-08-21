@@ -430,8 +430,10 @@ All current projects use **public repos** (simplest path).
 
 | App | Domain | App UUID | GitHub Repo | Branch |
 |-----|--------|----------|-------------|--------|
-| WassFlow SaaS | `wassflow.orizongroup.online` | `zxt32b72sbm7bsixg1s2rhr8` | `pixarusemperor/whatsapp-chatbot-saas` | `main` |
-| Image Ads Generator | `superads.orizongroup.online` | `jygt5ernjovbf36q391orfs2` | `pixarusemperor/whatsapp-chatbot-saas` | `master` |
+| wadeskhybrid | `wassflow.orizongroup.online` | `mbnoymz1gltpvx2dl3ubdrz2` | `pixarusemperor/wadeskhybrid` | `main` |
+| WassFlow SaaS | _(stopped, domain removed)_ | `zxt32b72sbm7bsixg1s2rhr8` | `pixarusemperor/whatsapp-chatbot-saas` | `main` |
+| wacrm-wasender | `wasender.orizongroup.online` | `jrd07b6d5zn18kr0i8y7bz16` | — | — |
+| Image Ads Generator | `superads.orizongroup.online` | `bwng78yv21ngxycdcnbbput8` | `pixarusemperor/whatsapp-chatbot-saas` | `master` |
 
 **Infrastructure UUIDs** (same for all apps on this Coolify instance):
 ```
